@@ -86,13 +86,28 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+  RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;     // Enable GPIOA CLK
 
+  uint32_t gpioa_moder = GPIOA->MODER;     // Read MODER current value
+
+  uint32_t moder_mask = 0x03;              // 0x0000000000000011
+  moder_mask = moder_mask << (2 * 5);      // 0x0000110000000000
+  moder_mask = ~moder_mask;                // 0x1111001111111111
+
+  gpioa_moder = gpioa_moder & moder_mask;  // MODER and(&) MASK to clear the bits 10 and 11
+
+  uint32_t mode_output = 0x01;             // 0x0000000000000001
+  mode_output = mode_output << (2 * 5);    // 0x0000010000000000
+  gpioa_moder = gpioa_moder | mode_output; // MODER or(|) MASK to set the 0x01 for output
+  GPIOA->MODER = gpioa_moder;              // Write the updated value back
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    GPIOA->ODR ^= GPIO_PIN_5;              // XOR the pin 5 for toggle
+    HAL_Delay(1000);                       // delay 1000ms
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
