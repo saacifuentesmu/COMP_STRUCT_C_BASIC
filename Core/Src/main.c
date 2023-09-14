@@ -54,6 +54,58 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void gpio_init_mode(GPIO_TypeDef *GPIOx, uint16_t pin, uint32_t mode)
+{
+	uint32_t gpio_moder = GPIOx->MODER;     // Read MODER current value
+
+	uint32_t moder_mask = 0x03;              // 0x0000000000000011
+	moder_mask = moder_mask << (2 * pin);      // 0x0000110000000000
+	moder_mask = ~moder_mask;                // 0x1111001111111111
+
+	gpio_moder = gpio_moder & moder_mask;  // MODER and(&) MASK to clear the bits 10 and 11
+
+	uint32_t mode_output = mode;             // 0x0000000000000001
+	mode_output = mode_output << (2 * pin);  // 0x0000010000000000
+	gpio_moder = gpio_moder | mode_output;   // MODER or(|) MASK to set the 0x01 for output
+	GPIOx->MODER = gpio_moder;               // Write the updated value back
+}
+
+void gpio_set_pin(GPIO_TypeDef *GPIOx, uint16_t pin)
+{
+	GPIOx->ODR |= (0x01 << pin);              // OR the pin 5 for toggle
+}
+
+void gpio_reset_pin(GPIO_TypeDef *GPIOx, uint16_t pin)
+{
+	GPIOx->ODR &= ~(0x01 << pin);              // ANd the pin 5 for toggle
+}
+
+uint16_t gpio_read_pin(GPIO_TypeDef *GPIOx, uint16_t pin)
+{
+	return (GPIOx->IDR & (0x01 << pin));
+}
+
+/**
+  * @brief  EXTI line detection callback.
+  * @param  GPIO_Pin Specifies the port pin connected to corresponding EXTI line.
+  * @retval None
+  */
+__weak void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  /* Prevent unused argument(s) compilation warning */
+  switch (GPIO_Pin) {
+  case GPIO_PIN_13:
+	  GPIOA->ODR ^= GPIO_PIN_5;
+	  break;
+
+  default:
+	  break;
+  }
+
+  /* NOTE: This function should not be modified, when the callback is needed,
+           the HAL_GPIO_EXTI_Callback could be implemented in the user file
+   */
+}
 
 /* USER CODE END 0 */
 
@@ -64,7 +116,6 @@ static void MX_GPIO_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -73,41 +124,22 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-  RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;     // Enable GPIOA CLK
-
-  uint32_t gpioa_moder = GPIOA->MODER;     // Read MODER current value
-
-  uint32_t moder_mask = 0x03;              // 0x0000000000000011
-  moder_mask = moder_mask << (2 * 5);      // 0x0000110000000000
-  moder_mask = ~moder_mask;                // 0x1111001111111111
-
-  gpioa_moder = gpioa_moder & moder_mask;  // MODER and(&) MASK to clear the bits 10 and 11
-
-  uint32_t mode_output = 0x01;             // 0x0000000000000001
-  mode_output = mode_output << (2 * 5);    // 0x0000010000000000
-  gpioa_moder = gpioa_moder | mode_output; // MODER or(|) MASK to set the 0x01 for output
-  GPIOA->MODER = gpioa_moder;              // Write the updated value back
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    GPIOA->ODR ^= GPIO_PIN_5;              // XOR the pin 5 for toggle
-    HAL_Delay(1000);                       // delay 1000ms
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -177,33 +209,27 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
-  GPIO_InitStruct.Pin = USART_TX_Pin|USART_RX_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pin : PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
